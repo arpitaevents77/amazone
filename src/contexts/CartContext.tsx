@@ -1,248 +1,216 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useAuth } from './AuthContext';
-import { supabase } from '../lib/supabase';
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import { useAuth } from './AuthContext'
+import { supabase } from '../lib/supabase'
 
 interface CartItem {
-  id: string;
-  cart_id: string;
-  variant_id: string;
-  asin: string;
-  quantity: number;
-  price_at_time: number;
-  product_name: string;
-  product_image: string;
-  variant_weight: number;
-  variant_weight_unit: string;
-  created_at: string;
+  id: string
+  cart_id: string
+  variant_id: string
+  asin: string
+  quantity: number
+  price_at_time: number
+  product_name: string
+  product_image: string
+  variant_weight: number
+  variant_weight_unit: string
+  created_at: string
 }
 
 interface CartContextType {
-  cartItems: CartItem[];
-  cartCount: number;
-  loading: boolean;
+  cartItems: CartItem[]
+  cartCount: number
+  loading: boolean
   addToCart: (
     variantId: string,
     asin: string,
     quantity: number,
-    productDetails: {
-      name: string;
-      image: string;
-      price: number;
-      weight: number;
-      weightUnit: string;
-    }
-  ) => Promise<void>;
-  updateQuantity: (itemId: string, quantity: number) => Promise<void>;
-  removeFromCart: (itemId: string) => Promise<void>;
-  clearCart: () => Promise<void>;
-  getCartTotal: () => number;
-  refreshCart: () => Promise<void>;
+    productDetails: any
+  ) => Promise<void>
+  updateQuantity: (itemId: string, quantity: number) => Promise<void>
+  removeFromCart: (itemId: string) => Promise<void>
+  clearCart: () => Promise<void>
+  getCartTotal: () => number
+  refreshCart: () => Promise<void>
 }
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export const useCart = () => {
-  const context = useContext(CartContext);
+  const context = useContext(CartContext)
   if (!context) {
-    throw new Error('useCart must be used within CartProvider');
+    throw new Error('useCart must be used within CartProvider')
   }
-  return context;
-};
+  return context
+}
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { user } = useAuth()
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
-      refreshCart();
+      refreshCart()
     } else {
-      setCartItems([]);
+      setCartItems([])
     }
-  }, [user]);
+  }, [user])
 
-  // ==========================
-  // GET OR CREATE CART
-  // ==========================
-
-  const getOrCreateCart = async () => {
-    if (!user) return null;
-
+  const getOrCreateCart = async (userId: string) => {
     const { data: existingCart } = await supabase
       .from('carts')
       .select('id')
-      .eq('user_id', user.id)
-      .single();
+      .eq('user_id', userId)
+      .single()
 
-    if (existingCart) return existingCart;
+    if (existingCart) return existingCart
 
     const { data: newCart, error } = await supabase
       .from('carts')
-      .insert([{ user_id: user.id }])
+      .insert([{ user_id: userId }])
       .select('id')
-      .single();
+      .single()
 
-    if (error) throw error;
-
-    return newCart;
-  };
-
-  // ==========================
-  // REFRESH CART
-  // ==========================
+    if (error) throw error
+    return newCart
+  }
 
   const refreshCart = async () => {
-    if (!user) return;
+    if (!user) return
 
     try {
-      setLoading(true);
+      setLoading(true)
 
-      const cart = await getOrCreateCart();
-      if (!cart) return;
+      const cart = await getOrCreateCart(user.id)
 
       const { data, error } = await supabase
         .from('cart_items')
         .select('*')
         .eq('cart_id', cart.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
 
-      if (error) throw error;
+      if (error) throw error
 
-      setCartItems(data || []);
+      setCartItems(data || [])
     } catch (error) {
-      console.error('Error refreshing cart:', error);
+      console.error('Error refreshing cart:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-
-  // ==========================
-  // ADD TO CART
-  // ==========================
+  }
 
   const addToCart = async (
     variantId: string,
     asin: string,
     quantity: number,
-    productDetails: {
-      name: string;
-      image: string;
-      price: number;
-      weight: number;
-      weightUnit: string;
-    }
+    productDetails: any
   ) => {
-    if (!user) throw new Error('Please sign in to add items');
+    if (!user) throw new Error('Please sign in')
 
-    const cart = await getOrCreateCart();
-    if (!cart) throw new Error('Cart not available');
+    try {
+      const cart = await getOrCreateCart(user.id)
 
-    const { data: existingItem } = await supabase
-      .from('cart_items')
-      .select('*')
-      .eq('cart_id', cart.id)
-      .eq('variant_id', variantId)
-      .single();
-
-    if (existingItem) {
-      await supabase
+      const { data: existingItem } = await supabase
         .from('cart_items')
-        .update({
-          quantity: existingItem.quantity + quantity,
-        })
-        .eq('id', existingItem.id);
-    } else {
-      await supabase.from('cart_items').insert([
-        {
-          cart_id: cart.id,
-          variant_id: variantId,
-          asin,
-          quantity,
-          price_at_time: productDetails.price,
-          product_name: productDetails.name,
-          product_image: productDetails.image,
-          variant_weight: productDetails.weight,
-          variant_weight_unit: productDetails.weightUnit,
-        },
-      ]);
+        .select('*')
+        .eq('cart_id', cart.id)
+        .eq('variant_id', variantId)
+        .single()
+
+      if (existingItem) {
+        const { error } = await supabase
+          .from('cart_items')
+          .update({
+            quantity: existingItem.quantity + quantity
+          })
+          .eq('id', existingItem.id)
+
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('cart_items')
+          .insert([
+            {
+              cart_id: cart.id,
+              variant_id: variantId,
+              asin,
+              quantity,
+              price_at_time: productDetails.price,
+              product_name: productDetails.name,
+              product_image: productDetails.image,
+              variant_weight: productDetails.weight,
+              variant_weight_unit: productDetails.weightUnit
+            }
+          ])
+
+        if (error) throw error
+      }
+
+      await refreshCart()
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      throw error
     }
-
-    await refreshCart();
-  };
-
-  // ==========================
-  // UPDATE QUANTITY
-  // ==========================
+  }
 
   const updateQuantity = async (itemId: string, quantity: number) => {
-    if (quantity <= 0) {
-      await removeFromCart(itemId);
-      return;
+    try {
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity })
+        .eq('id', itemId)
+
+      if (error) throw error
+
+      await refreshCart()
+    } catch (error) {
+      console.error('Error updating quantity:', error)
+      throw error
     }
-
-    const { error } = await supabase
-      .from('cart_items')
-      .update({ quantity })
-      .eq('id', itemId);
-
-    if (error) throw error;
-
-    await refreshCart();
-  };
-
-  // ==========================
-  // REMOVE ITEM
-  // ==========================
+  }
 
   const removeFromCart = async (itemId: string) => {
-    const { error } = await supabase
-      .from('cart_items')
-      .delete()
-      .eq('id', itemId);
+    try {
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('id', itemId)
 
-    if (error) throw error;
+      if (error) throw error
 
-    await refreshCart();
-  };
-
-  // ==========================
-  // CLEAR CART
-  // ==========================
+      await refreshCart()
+    } catch (error) {
+      console.error('Error removing from cart:', error)
+      throw error
+    }
+  }
 
   const clearCart = async () => {
-    if (!user) return;
+    if (!user) return
 
-    const cart = await getOrCreateCart();
-    if (!cart) return;
+    try {
+      const cart = await getOrCreateCart(user.id)
 
-    const { error } = await supabase
-      .from('cart_items')
-      .delete()
-      .eq('cart_id', cart.id);
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('cart_id', cart.id)
 
-    if (error) throw error;
+      if (error) throw error
 
-    setCartItems([]);
-  };
+      setCartItems([])
+    } catch (error) {
+      console.error('Error clearing cart:', error)
+      throw error
+    }
+  }
 
-  // ==========================
-  // CALCULATIONS
-  // ==========================
+  const getCartTotal = () =>
+    cartItems.reduce((total, item) => total + item.price_at_time * item.quantity, 0)
 
-  const getCartTotal = () => {
-    return cartItems.reduce(
-      (total, item) => total + item.price_at_time * item.quantity,
-      0
-    );
-  };
+  const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0)
 
-  const cartCount = cartItems.reduce(
-    (total, item) => total + item.quantity,
-    0
-  );
-
-  const value = {
+  const value: CartContextType = {
     cartItems,
     cartCount,
     loading,
@@ -251,8 +219,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     removeFromCart,
     clearCart,
     getCartTotal,
-    refreshCart,
-  };
+    refreshCart
+  }
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
-};
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
+}
