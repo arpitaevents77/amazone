@@ -56,14 +56,13 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onProductUpdate 
   const images = product.images || [];
 
   const formatPrice = (price: number) => {
-    const numPrice = Number(price);
-    if (!numPrice || isNaN(numPrice)) return '₹0';
+    if (!price || isNaN(Number(price))) return '₹0';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(numPrice);
+    }).format(Number(price));
   };
 
   const renderStars = (rating: number) => {

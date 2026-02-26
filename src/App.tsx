@@ -26,6 +26,14 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import SearchPage from './pages/SearchPage';
 
+// Footer Pages
+import ConditionsPage from './pages/ConditionsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import CookiesPage from './pages/CookiesPage';
+import InterestAdsPage from './pages/InterestAdsPage';
+import HelpPage from './pages/HelpPage';
+import ContactPage from './pages/ContactPage';
+
 // Placeholder components
 const OrdersPage = () => (
   <div className="min-h-screen bg-gray-50 py-12">
@@ -57,6 +65,14 @@ function App() {
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/category/:category" element={<ProductListPage />} />
                 <Route path="/product/:slug" element={<ProductDetailPage />} />
+                
+                {/* Footer Pages */}
+                <Route path="/conditions" element={<ConditionsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/cookies" element={<CookiesPage />} />
+                <Route path="/interest-ads" element={<InterestAdsPage />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/contact" element={<ContactPage />} />
 
                 {/* Protected routes */}
                 <Route

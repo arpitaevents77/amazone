@@ -51,6 +51,11 @@ export const useProducts = (categorySlug?: string, limit?: number) => {
           ? product.reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / product.reviews.length
           : 0,
         totalReviews: product.reviews?.length || 0,
+        // Ensure variants have proper pricing data
+        variants: product.variants?.map((variant: any) => ({
+          ...variant,
+          pricing: variant.pricing?.[0] || variant.pricing || null
+        })) || []
       })) || [];
 
       setProducts(processedProducts);
@@ -116,6 +121,11 @@ export const useProduct = (slug: string) => {
           ? data.reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / data.reviews.length
           : 0,
         totalReviews: data.reviews?.length || 0,
+        // Ensure variants have proper pricing data
+        variants: data.variants?.map((variant: any) => ({
+          ...variant,
+          pricing: variant.pricing?.[0] || variant.pricing || null
+        })) || [],
         reviews: data.reviews?.map((review: any) => ({
           ...review,
           likes_count: review.review_likes?.length || 0,
