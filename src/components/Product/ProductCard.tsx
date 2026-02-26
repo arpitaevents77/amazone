@@ -46,6 +46,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     if (!mainVariant || !pricing) return;
 
     try {
+      console.log('ProductCard: Adding to cart with data:', {
+        variantId: mainVariant.id,
+        asin: product.asin,
+        quantity: 1,
+        productDetails: {
+          price: pricing.effective_price,
+          name: product.name,
+          image: mainImage,
+          weight: mainVariant.weight,
+          weightUnit: mainVariant.weight_unit
+        }
+      });
+      
       await addToCart(mainVariant.id, product.asin, 1, {
         price: pricing.effective_price,
         name: product.name,
@@ -53,9 +66,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         weight: mainVariant.weight,
         weightUnit: mainVariant.weight_unit
       });
+      
+      console.log('ProductCard: Item added to cart successfully');
     } catch (error) {
       console.error('Error adding to cart:', error);
-      alert('Please sign in to add items to cart');
+      if (error instanceof Error && error.message.includes('sign in')) {
+        alert('Please sign in to add items to cart');
+      } else {
+        alert('Failed to add item to cart. Please try again.');
+      }
     }
   };
   return (

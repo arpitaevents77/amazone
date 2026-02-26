@@ -92,6 +92,19 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onProductUpdate 
     if (!selectedVariant || !pricing) return;
 
     try {
+      console.log('ProductDetail: Adding to cart with data:', {
+        variantId: selectedVariant.id,
+        asin: product.asin,
+        quantity: quantity,
+        productDetails: {
+          price: pricing.effective_price,
+          name: product.name,
+          image: images[selectedImageIndex]?.image_url || 'https://images.pexels.com/photos/264537/pexels-photo-264537.jpeg?auto=compress&cs=tinysrgb&w=800',
+          weight: selectedVariant.weight,
+          weightUnit: selectedVariant.weight_unit
+        }
+      });
+      
       await addToCart(selectedVariant.id, product.asin, quantity, {
         price: pricing.effective_price,
         name: product.name,
@@ -100,10 +113,15 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ product, onProductUpdate 
         weightUnit: selectedVariant.weight_unit
       });
       
+      console.log('ProductDetail: Item added to cart successfully');
       alert('Product added to cart!');
     } catch (error) {
       console.error('Error adding to cart:', error);
-      alert('Please sign in to add items to cart');
+      if (error instanceof Error && error.message.includes('sign in')) {
+        alert('Please sign in to add items to cart');
+      } else {
+        alert('Failed to add item to cart. Please try again.');
+      }
     }
   };
 

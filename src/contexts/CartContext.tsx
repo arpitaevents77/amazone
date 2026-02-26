@@ -53,6 +53,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getUserProfile = async () => {
     if (!user) return null;
+    
+    try {
     const { data } = await supabase
       .from('users')
       .select('id')
@@ -77,6 +79,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('id')
         .single();
       cart = newCart;
+      
+      if (!data) {
+        console.error('User profile not found');
+        return null;
+      }
+      
     }
 
     return cart;
@@ -117,9 +125,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!profile) throw new Error('User profile not found');
 
       const cart = await getOrCreateCart(profile.id);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
       if (!cart) throw new Error('Could not create cart');
 
       // Check if item already exists in cart
+    try {
       const { data: existingItem } = await supabase
         .from('cart_items')
         .select('*')
@@ -146,28 +159,47 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             product_name: productDetails.name,
             product_image: productDetails.image,
             variant_weight: productDetails.weight,
-            variant_weight_unit: productDetails.weightUnit
+        const { error: updateError } = await supabase
           }]);
       }
 
+        
+        if (updateError) {
+          console.error('Error updating cart item:', updateError);
+          throw updateError;
+        }
+        
+        console.log('Updated existing cart item');
       await refreshCart();
     } catch (error) {
-      console.error('Error adding to cart:', error);
+        const cartItemData = {
+          cart_id: cart.id,
+          variant_id: variantId,
+          asin: asin,
+          quantity: quantity,
+          price_at_time: productDetails.price,
+          product_name: productDetails.name,
+          product_image: productDetails.image,
+          variant_weight: productDetails.weight,
+          variant_weight_unit: productDetails.weightUnit
+        };
+        
+        console.log('Inserting cart item:', cartItemData);
+        
+        const { error: insertError } = await supabase
       throw error;
-    }
-  };
-
-  const updateQuantity = async (itemId: string, quantity: number) => {
-    try {
-      if (quantity <= 0) {
-        await removeFromCart(itemId);
-        return;
-      }
-
-      await supabase
+          .insert([cartItemData]);
+        
+        if (insertError) {
+          console.error('Error inserting cart item:', insertError);
+          throw insertError;
+        }
+        
+        console.log('Added new cart item');
         .from('cart_items')
         .update({ quantity })
         .eq('id', itemId);
+      console.log('Cart refreshed after adding item');
 
       await refreshCart();
     } catch (error) {
@@ -181,42 +213,72 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase
         .from('cart_items')
         .delete()
-        .eq('id', itemId);
+      const { error } = await supabase
 
       await refreshCart();
     } catch (error) {
+      
+      if (error) {
+        console.error('Error updating quantity:', error);
+        throw error;
+      }
       console.error('Error removing from cart:', error);
       throw error;
+    }
+    } catch (error) {
+      console.error('Error getting or creating cart:', error);
+      return null;
     }
   };
 
   const clearCart = async () => {
-    if (!user) return;
+      const { error } = await supabase
 
     try {
       const profile = await getUserProfile();
-      if (!profile) return;
+      
+      if (error) {
+        console.error('Error removing from cart:', error);
+        throw error;
+      }
+      if (!profile) {
+        console.error('No user profile found');
+        return;
+      }
 
       const cart = await getOrCreateCart(profile.id);
-      if (!cart) return;
+      if (!cart) {
+        console.error('No cart found or created');
+        return;
+      }
 
       await supabase
         .from('cart_items')
         .delete()
         .eq('cart_id', cart.id);
 
+      console.log('Cart items fetched:', items);
       setCartItems([]);
-    } catch (error) {
+      const { error } = await supabase
       console.error('Error clearing cart:', error);
       throw error;
     }
+      
+      if (error) {
+        console.error('Error clearing cart:', error);
+        throw error;
+      }
   };
 
+      console.log('Adding to cart:', { variantId, asin, quantity, productDetails });
+      
   const getCartTotal = () => {
     return cartItems.reduce((total, item) => total + (item.price_at_time * item.quantity), 0);
   };
 
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+
+      console.log('Cart found/created:', cart);
 
   const value = {
     cartItems,
@@ -229,6 +291,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getCartTotal,
     refreshCart,
   };
+
+      console.log('Existing item:', existingItem);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
